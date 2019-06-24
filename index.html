@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LogAnalysis</title>
+    <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <link href="https://cdn.bootcss.com/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.bootcss.com/datatables/1.10.19/js/jquery.dataTables.min.js"></script>
+    <link href="https://cdn.bootcss.com/datatables/1.10.19/css/jquery.dataTables.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/index.css">
+</head>
+<body>
+
+<div class="main container-fluid">
+    <div style="text-align: center"><h2>LogAnalysis</h2></div>
+<div class="mssuja" style="width: 100%;">
+
+    <div class="mssjfl" style="height: 80px; width: 100%;">
+        <form id="uploadForm" class="form-container"  enctype="multipart/form-data">
+            <div class="form-container">
+                <div style="width:75%; float:left;">
+                    <input id="csv_label" placeholder="Choose CSV File" disabled="disabled"/>
+                    <div class="fileUpload btn btn-primary">
+                        <span>+</span>
+                        <input id="csv" type="file" class="upload" name="csv"/>
+                    </div><br>
+                    <input id="log_label" placeholder="Choose LOG File" disabled="disabled"/>
+                    <div class="fileUpload btn btn-primary">
+                        <span>+</span>
+                        <input id="log" type="file" class="upload" name="log[]"/ multiple>
+                    </div>
+                </div>
+                <div style="width:24%; padding-top:16px; float:right;">
+                    <button type="button" class="btn btn-primary" id="analysisBtn" data-loading-text="Analysing...">Analyse</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div id="warning_info"></div>
+    <div class="result" id="res">
+        <div class="mssjfl" style="text-align:center; width:60%; float:left;">
+            <ul>Csv Table</ul>
+            <div id="csv_tab" style="width:98%;padding-left: 5px;">
+                <table id="table_id" class="cell-border display nowrap" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>timestamp</th>
+                            <th>sn</th>
+                            <th>group</th>
+                            <th>tid</th>
+                            <th>low_high_unit</th>
+                            <th>value</th>
+                            <th>result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="csv_dt"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="mssjfl" style="text-align:center; width:39%; float:right; background: #f6f6f6;">
+            <ul>Log Content</ul>
+            <div style="overflow:scroll;padding: 2px 10px 2px 5px;height:750px;" id="log_list">
+                <div id="note">
+                    <li class="list-group-item list-group-item-info">
+                        <p>Upload csv and log file</p>
+                        <p>Please note the suffix of filename</p>
+                    </li>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+
+</body>
+<script>
+    document.getElementById("csv").onchange = function () {
+        document.getElementById("csv_label").value = this.files[0].name;
+    };
+    document.getElementById("log").onchange = function () { 
+        for (var x = 0; x < document.getElementById("log").files.length; x++){
+            document.getElementById("log_label").value = document.getElementById("log_label").value + '/'+this.files[x].name;
+        };
+    };
+    //document.getElementById("log").onchange = function () {
+    //    document.getElementById("log_label").value = this.files[0].name + this.files[1].name;
+    //};
+    function scrollIt(timestamp) {
+        var log = document.getElementById(timestamp);
+        if (log) {
+            document.getElementById("log_list").scrollTop = log.offsetTop - 400;
+            log.classList.add("active");
+            setTimeout(function(){
+                log.className = "panel panel-warning";
+            },2000);
+        }else{
+            var sec = '"div[id^=\''+timestamp.split(".")[0]+'\']"';
+            var nsec = timestamp.split(".")[1];
+            var obj = $(eval(sec));
+            if (obj.length) {
+                for(var i = 0;i<obj.length;i++){
+                    if (nsec <= obj[i].id.split('.')[1]) break;
+                }
+                var ind = i?i-1:0;
+                console.log(ind);
+                document.getElementById("log_list").scrollTop = obj[ind].offsetTop - 400;
+                obj[ind].classList.add("active");
+                setTimeout(function(){
+                    obj[ind].className = "panel panel-warning";
+                },2000);
+            }else{
+                document.getElementById("warning_info").innerHTML = '<div class="alert alert-danger fade in"><button type="button" class="close" data-dismiss="alert">&times;</button><strong>Timestamp '+ timestamp +' not found!</strong></div>';
+            }
+        }
+    }
+    function updateCsv(csv) {
+        var ctable = "";
+        for(var i=0;i<csv.length;i++){
+              ctable += '<tr>';
+              ctable += '<td>' + csv[i]['timestamp'] + '</td>';
+              ctable += '<td>' + csv[i]['sn'] + '</td>';
+              ctable += '<td>' + csv[i]['group'] + '</td>';
+              ctable += '<td>' + csv[i]['tid'] + '</td>';
+              ctable += '<td>' + csv[i]['low_high_unit'] + '</td>';
+              ctable += '<td>' + csv[i]['value'] + '</td>';
+              if (csv[i]["result"] != "Fail") {
+                  ctable += '<td><a style="display:none">'+csv[i]['result']+'<a><input type="button" style="width:60px" class="btn btn-success" value="'+ csv[i]['result'] + '" onclick="scrollIt(\''+csv[i]['timestamp']+'\')"/></td>';
+              }else{
+                  ctable += '<td><a style="display:none">'+csv[i]['result']+'<a><input type="button" style="width:60px" class="btn btn-danger" value="'+ csv[i]['result'] + '" onclick="scrollIt(\''+csv[i]['timestamp']+'\')"/></td>';
+              }
+              ctable += '</tr>';
+        }
+      document.getElementById("csv_dt").innerHTML = ctable;
+      $('#table_id').DataTable({
+            "searching": true,
+            "autoFill" : true,
+            "bAutoWidth":true,
+            "bFilter":true,
+            "stateSave":true,
+            "scrollY":'73vh',
+            "scrollCollapse":true,
+            "scrollX": true
+        });
+    }
+    function updateLog(logs) {
+          var logHtml = "";
+          for(var j = 0;j<logs.length;j++){
+              logHtml += '<div class="panel panel-success" id="' + logs[j][0] +'"><div class="panel-heading"><h3 class="panel-title">';
+              logHtml += logs[j][0];
+              logHtml += '</h3></div><div class="panel-body">';
+              logHtml += logs[j][1].replace(/\n/g,"<br>");
+              logHtml += '</div></div>';
+{#              logHtml += '<div id="' + logs[j][0] +'"><li class="list-group-item list-group-item-success">' + logs[j][1].replace(/\n/g,"<br>") + '</li></div>';#}
+          }
+          document.getElementById("log_list").innerHTML = logHtml;
+    }
+    $("#analysisBtn").click(function() {
+        $(this).button('loading').delay(1000).queue(function() {
+            $(this).button('reset');
+            $(this).dequeue();
+        });
+        var formData = new FormData();
+        formData.append("csv", document.getElementById("csv").files[0]);
+        for (var x = 0; x < document.getElementById("log").files.length; x++){
+            formData.append("log"+x, document.getElementById("log").files[x]);
+        };
+        formData.set("length", document.getElementById("log").files.length);
+         //执行上传 class="text-center" width="90" table table-striped table-bordered table-hover
+         $.ajax({
+              url: "/",
+              type: "POST",
+              data: formData,
+              cache: false,
+              processData: false,
+              contentType: false,
+              success: function(data) {
+                  if (data["code"] == 1) {
+                      updateCsv(data["all"]);
+                      updateLog(data["log"]);
+                  }else{
+                      document.getElementById("csv_tab").innerHTML = data["msg"];
+                  }
+              },
+              error: function(err) {
+              }
+        });
+ });
+</script>
+</html>
